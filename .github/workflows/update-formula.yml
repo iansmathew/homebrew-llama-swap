@@ -7,10 +7,12 @@ on:
 on:
   workflow_dispatch:
     inputs:
-      tag_name:
-        description: 'Release tag name'
-        required: true
-        default: ''
+      client_payload:
+        release:
+          tag_name:
+            description: 'Release tag name'
+            required: true
+            default: ''
 
 jobs:
   update-formula:
