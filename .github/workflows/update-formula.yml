@@ -4,16 +4,6 @@ on:
   repository_dispatch:
     types: [new-release]
 
-on:
-  workflow_dispatch:
-    inputs:
-      client_payload:
-        release:
-          tag_name:
-            description: 'Release tag name'
-            required: true
-            default: ''
-
 jobs:
   update-formula:
     runs-on: ubuntu-latest
@@ -25,6 +15,6 @@ jobs:
         uses: mislav/bump-homebrew-formula-action@v3
         with:
           formula_path: "Formula/llama-swap.rb"
-          tag_name: ${{ github.event.client_payload.release.tag_name }}
+          tag_name: "144"
         env:
           COMMITTER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
