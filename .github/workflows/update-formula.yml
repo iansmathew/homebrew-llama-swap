@@ -17,6 +17,7 @@ jobs:
       - name: "Bump Homebrew formula"
         uses: mislav/bump-homebrew-formula-action@v3
         with:
+          formula-name: llama-swap
           formula-path: Formula/llama-swap.rb
           tag-name: ${{ github.event.inputs.tag-name }}
           homebrew-tap: iansmathew/llama-swap
