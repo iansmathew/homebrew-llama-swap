@@ -4,6 +4,14 @@ on:
   repository_dispatch:
     types: [new-release]
 
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag name'
+        required: true
+        default: ''
+
 jobs:
   update-formula:
     runs-on: ubuntu-latest
