@@ -12,7 +12,7 @@ jobs:
       - name: "Bump Homebrew formula"
         uses: mislav/bump-homebrew-formula-action@v3
         with:
-          formula_path: "Formula/llama-swap.rb"
-          tag_name: "144"
+          formula-path: "Formula/llama-swap.rb"
+          tag-name: "144"
         env:
           COMMITTER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
