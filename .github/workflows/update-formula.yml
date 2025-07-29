@@ -1,6 +1,11 @@
 
 name: Update Homebrew Formula
-on: push
+on:
+  workflow_dispatch:
+    inputs:
+      tag-name:
+        description: 'The git tag name to bump the formula to'
+        required: true
 
 jobs:
   update-formula:
@@ -12,8 +17,8 @@ jobs:
       - name: "Bump Homebrew formula"
         uses: mislav/bump-homebrew-formula-action@v3
         with:
-          formula-path: "Formula/llama-swap.rb"
-          tag-name: "144"
-          homebrew-tap: "iansmathew/llama-swap"
+          formula-path: Formula/llama-swap.rb
+          tag-name: ${{ github.event.inputs.tag-name }}
+          homebrew-tap: iansmathew/llama-swap
         env:
           COMMITTER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
