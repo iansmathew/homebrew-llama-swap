@@ -1,8 +1,6 @@
 
 name: Update Homebrew Formula
-on:
-  repository_dispatch:
-    types: [new-release]
+on: push
 
 jobs:
   update-formula:
