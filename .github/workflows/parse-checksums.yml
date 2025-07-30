@@ -1,0 +1,45 @@
+name: Parse llama-swap checksums
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag-name:
+        description: 'The git tag name to bump the formula to'
+        required: true
+
+jobs:
+  extract-checksums:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Extract release info"
+        id: extract_info
+        run: |
+          TAG_NAME="${{ github.event.client_payload.release.tag_name }}"
+          VERSION="${TAG_NAME#v}" # Remove 'v' prefix if present
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Download checksum file
+        run: |
+          curl -L -o llama-swap_${VERSION}_checksums.txt https://github.com/mostlygeek/llama-swap/releases/download/${TAG_NAME}/llama-swap_${VERSION}_checksums.txt
+
+      - name: Extract and set checksums as outputs
+        id: extract
+        run: |
+          while read checksum filename; do
+            # Process architecture from filename
+            arch=$(echo "$filename" | sed -E 's/llama-swap_${VERSION}_([a-z]+)_([a-z0-9]+)\..+/\1_\2/')
+            # Sanitize for output variable
+            var_name="${arch}"
+            # Set output
+            echo "${var_name}_checksum=$checksum" >> $GITHUB_OUTPUT
+            echo "${var_name}_filename=$filename" >> $GITHUB_OUTPUT
+          done < llama-swap_${VERSION}_checksums.txt
+
+      - name: Use .txt values as example
+        run: |
+          echo "linux_amd64 checksum: ${{ steps.extract.outputs.linux_amd64_checksum }}"
+          echo "linux_amd64 filename: ${{ steps.extract.outputs.linux_amd64_filename }}"
+          echo "darwin_arm64 checksum: ${{ steps.extract.outputs.darwin_arm64_checksum }}"
+          echo "darwin_arm64 filename: ${{ steps.extract.outputs.darwin_arm64_filename }}"
+          # Add more as needed
