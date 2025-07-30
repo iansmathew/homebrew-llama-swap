@@ -16,6 +16,7 @@ jobs:
         run: |
           TAG_NAME="${{ github.event.client_payload.release.tag_name }}"
           VERSION="${TAG_NAME#v}" # Remove 'v' prefix if present
+          FILENAME="llama-swap_${VERSION}_checksums.txt"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
