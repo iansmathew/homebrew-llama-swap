@@ -6,41 +6,73 @@ on:
       tag-name:
         description: 'The git tag name to bump the formula to'
         required: true
+        default: "v142"
 
 jobs:
   extract-checksums:
     runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.extract_info.outputs.VERSION }}
+      DARWIN_AMD64: ${{ steps.extract.outputs.DARWIN_AMD64 }}
+      DARWIN_ARM64: ${{ steps.extract.outputs.DARWIN_ARM64 }}
+      LINUX_AMD64: ${{ steps.extract.outputs.LINUX_AMD64 }}
+      LINUX_ARM64: ${{ steps.extract.outputs.LINUX_ARM64 }}
     steps:
       - name: "Extract release info"
         id: extract_info
         run: |
-          TAG_NAME="${{ github.event.client_payload.release.tag_name }}"
+          # TAG_NAME="${{ github.event.client_payload.release.tag_name }}"
+          TAG_NAME="${{ inputs.tag-name }}"
           VERSION="${TAG_NAME#v}" # Remove 'v' prefix if present
-          FILENAME="llama-swap_${VERSION}_checksums.txt"
+          TXTFILENAME="llama-swap_${VERSION}_checksums.txt"
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "TXTFILENAME=$TXTFILENAME" >> $GITHUB_OUTPUT
 
-      - name: Download checksum file
+      - name: Download checksum.txt
+        id: download_checksum
         run: |
+          TAG_NAME=${{steps.extract_info.outputs.TAG_NAME}}
+          VERSION=${{steps.extract_info.outputs.VERSION}}
           curl -L -o llama-swap_${VERSION}_checksums.txt https://github.com/mostlygeek/llama-swap/releases/download/${TAG_NAME}/llama-swap_${VERSION}_checksums.txt
 
       - name: Extract and set checksums as outputs
         id: extract
         run: |
-          while read checksum filename; do
-            # Process architecture from filename
-            arch=$(echo "$filename" | sed -E 's/llama-swap_${VERSION}_([a-z]+)_([a-z0-9]+)\..+/\1_\2/')
-            # Sanitize for output variable
-            var_name="${arch}"
-            # Set output
-            echo "${var_name}_checksum=$checksum" >> $GITHUB_OUTPUT
-            echo "${var_name}_filename=$filename" >> $GITHUB_OUTPUT
+          VERSION=${{steps.extract_info.outputs.VERSION}}
+          while read -r checksum filename; do
+            IFS='_' read -ra parts <<< "$filename"
+            os=${parts[2]}
+            arch_part=${parts[3]}
+            arch=${arch_part%%.*}
+            os=$(echo "$os" | tr '[:lower:]' '[:upper:]')
+            arch=$(echo "$arch" | tr '[:lower:]' '[:upper:]')
+            var_name="${os}_${arch}"
+            echo "$var_name"="$checksum" >> $GITHUB_OUTPUT
           done < llama-swap_${VERSION}_checksums.txt
 
-      - name: Use .txt values as example
+  update-formula:
+    runs-on: ubuntu-latest
+    needs: extract-checksums
+    steps:
+      - uses: actions/checkout@v3
+      - name: Update formula
         run: |
-          echo "linux_amd64 checksum: ${{ steps.extract.outputs.linux_amd64_checksum }}"
-          echo "linux_amd64 filename: ${{ steps.extract.outputs.linux_amd64_filename }}"
-          echo "darwin_arm64 checksum: ${{ steps.extract.outputs.darwin_arm64_checksum }}"
-          echo "darwin_arm64 filename: ${{ steps.extract.outputs.darwin_arm64_filename }}"
-          # Add more as needed
+          VERSION=${{ needs.extract-checksums.outputs.VERSION }}
+          DARWIN_AMD64_SHA=${{ needs.extract-checksums.outputs.DARWIN_AMD64 }}
+          DARWIN_ARM64_SHA=${{ needs.extract-checksums.outputs.DARWIN_ARM64 }}
+          LINUX_AMD64_SHA=${{ needs.extract-checksums.outputs.LINUX_AMD64 }}
+          LINUX_ARM64_SHA=${{ needs.extract-checksums.outputs.LINUX_ARM64 }}
+
+          sed -i 's/version ".*"/version "'"$VERSION"'"/' Formula/llama-swap.rb
+          sed -i '/darwin_arm64/!b;n;s/sha256 ".*"/sha256 "'"$DARWIN_ARM64_SHA"'"/' Formula/llama-swap.rb
+          sed -i '/darwin_amd64/!b;n;s/sha256 ".*"/sha256 "'"$DARWIN_AMD64_SHA"'"/' Formula/llama-swap.rb
+          sed -i '/linux_arm64/!b;n;s/sha256 ".*"/sha256 "'"$LINUX_ARM64_SHA"'"/' Formula/llama-swap.rb
+          sed -i '/linux_amd64/!b;n;s/sha256 ".*"/sha256 "'"$LINUX_AMD64_SHA"'"/' Formula/llama-swap.rb
+      - name: Commit and push changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add Formula/llama-swap.rb
+          git commit -m "Update llama-swap formula to version ${{ needs.extract-checksums.outputs.VERSION }}"
+          git push
